@@ -144,15 +144,11 @@ def health():
         JSON con estado de salud
     """
     is_valid, error = validate_api_key()
-    
-    if not is_valid:
-        return jsonify({
-            'status': 'unhealthy',
-            'message': error
-        }), 503
-    
+
     return jsonify({
-        'status': 'healthy',
+        'status': 'healthy' if is_valid else 'degraded',
+        'openweather_api_key_configured': bool(is_valid),
+        'message': None if is_valid else error,
         'timestamp': datetime.utcnow().isoformat() + 'Z'
     }), 200
 
