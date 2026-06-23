@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clima EM</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg1: #060d24;
+    --bg2: #0f1e4a;
+    --card-bg: rgba(10, 18, 55, 0.82);
+    --border: rgba(100, 180, 255, 0.18);
+    --accent: #00C9E0;
+    --accent2: #0097A7;
+    --text: #E3F2FD;
+    --muted: #5C7C9A;
+    --stat-bg: rgba(255,255,255,0.07);
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: radial-gradient(ellipse at 30% 20%, #0d1f5c 0%, #060d24 70%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 460px;
+  }
+
+  /* ── Header ── */
+  .header { text-align: center; margin-bottom: 22px; }
+  .header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 2px;
+    text-shadow: 0 0 30px rgba(0,201,224,0.4);
+  }
+  .header p { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+  /* ── Search bar ── */
+  .search-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .search-row label {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+  .input-wrap { flex: 1; }
+  .search-row input {
+    width: 100%;
+    background: rgba(255,255,255,0.07);
+    border: 1.5px solid rgba(100,180,255,0.25);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    padding: 11px 16px;
+    outline: none;
+    transition: border-color .2s, background .2s;
+  }
+  .search-row input:focus {
+    border-color: var(--accent);
+    background: rgba(255,255,255,0.11);
+  }
+  .search-row input::placeholder { color: #3d5a72; }
+
+  .btn-search {
+    align-self: flex-end;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 11px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity .2s, transform .1s;
+    letter-spacing: .3px;
+  }
+  .btn-search:hover  { opacity: .88; }
+  .btn-search:active { transform: scale(.97); }
+  .btn-search:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ── Error / status ── */
+  .status {
+    display: none;
+    background: rgba(239,83,80,0.12);
+    border: 1px solid rgba(239,83,80,0.3);
+    color: #EF9A9A;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-bottom: 14px;
+    text-align: center;
+  }
+  .status.visible { display: block; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+    display: none;
+    animation: fadeUp .4s ease;
+  }
+  .card.visible { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Canvas scene ── */
+  #scene {
+    width: 100%;
+    height: 260px;
+    display: block;
+    position: relative;
+  }
+
+  /* ── Data panel ── */
+  .data-panel { padding: 16px 20px 20px; }
+
+  .city-title {
+    text-align: center;
+    color: var(--text);
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    letter-spacing: .5px;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .stat {
+    background: var(--stat-bg);
+    border-radius: 10px;
+    padding: 8px 6px;
+    text-align: center;
+  }
+  .stat .val {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .stat .lbl {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .minmax {
+    text-align: center;
+    color: #4a7a9b;
+    font-size: 12px;
+  }
+
+  /* ── Loading spinner ── */
+  .spinner {
+    display: none;
+    width: 28px; height: 28px;
+    border: 3px solid rgba(0,201,224,0.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    margin: 14px auto;
+  }
+  .spinner.visible { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    color: #2a4060;
+    font-size: 11px;
+    margin-top: 18px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <h1>Clima EM</h1>
+    <p>Ingresa una ciudad para ver el clima actual</p>
+  </div>
+
+  <div class="search-row">
+    <div class="input-wrap">
+      <label for="cityInput">Ingresa una ciudad :</label>
+      <input id="cityInput" type="text" placeholder="Ingresa el nombre de la ciudad" autocomplete="off" />
+    </div>
+    <button class="btn-search" id="btnSearch" onclick="fetchWeather()">Escanear Clima</button>
+  </div>
+
+  <div class="spinner" id="spinner"></div>
+  <div class="status" id="status"></div>
+
+  <div class="card" id="card">
+    <canvas id="scene"></canvas>
+
+    <div class="data-panel">
+      <p class="city-title" id="cityTitle">—</p>
+      <div class="stats">
+        <div class="stat"><span class="val" id="sHum">—</span><span class="lbl">💧 Humedad</span></div>
+        <div class="stat"><span class="val" id="sWind">—</span><span class="lbl">💨 Viento</span></div>
+        <div class="stat"><span class="val" id="sPress">—</span><span class="lbl">🌡 Presión</span></div>
+      </div>
+      <p class="minmax" id="minmax"></p>
+    </div>
+  </div>
+
+  <p class="footer">Clima EM · OpenWeather via Flask API · localhost:5000</p>
+</div>
+
+<script>
+/* ──────────────────────────────────────────
+   THEMES
+────────────────────────────────────────── */
+const THEMES = {
+  Clear:        { sky1:'#FFB347', sky2:'#FF7043', ground:'#43A047', accent:'#FFD54F' },
+  Clouds:       { sky1:'#78909C', sky2:'#455A64', ground:'#546E7A', accent:'#CFD8DC' },
+  Rain:         { sky1:'#546E7A', sky2:'#263238', ground:'#33691E', accent:'#80DEEA' },
+  Drizzle:      { sky1:'#607D8B', sky2:'#37474F', ground:'#388E3C', accent:'#B2EBF2' },
+  Thunderstorm: { sky1:'#37474F', sky2:'#212121', ground:'#1B5E20', accent:'#FFEE58' },
+  Snow:         { sky1:'#B0BEC5', sky2:'#78909C', ground:'#E0E0E0', accent:'#FFFFFF' },
+  Mist:         { sky1:'#90A4AE', sky2:'#607D8B', ground:'#7CB342', accent:'#ECEFF1' },
+  Fog:          { sky1:'#90A4AE', sky2:'#607D8B', ground:'#7CB342', accent:'#ECEFF1' },
+  Haze:         { sky1:'#FFCC80', sky2:'#FFA726', ground:'#8BC34A', accent:'#FFE0B2' },
+  default:      { sky1:'#42A5F5', sky2:'#1565C0', ground:'#43A047', accent:'#81D4FA' },
+};
+
+/* ──────────────────────────────────────────
+   STATE
+────────────────────────────────────────── */
+let animFrame = null;
+let particles = [];
+let tick = 0;
+
+/* ──────────────────────────────────────────
+   FETCH
+────────────────────────────────────────── */
+const API = 'http://localhost:5000';
+
+async function fetchWeather() {
+  const city = document.getElementById('cityInput').value.trim();
+  if (!city) { showError('Escribe el nombre de una ciudad'); return; }
+
+  hideError();
+  setLoading(true);
+
+  try {
+    const r = await fetch(`${API}/weather?city=${encodeURIComponent(city)}`);
+    const json = await r.json();
+    if (r.ok && json.success) {
+      renderCard(json.data);
+    } else {
+      showError(json.error || 'Error desconocido');
+    }
+  } catch(e) {
+    showError(`No se pudo conectar al API en ${API}`);
+  } finally {
+    setLoading(false);
+  }
+}
+
+/* Enter key */
+document.getElementById('cityInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') fetchWeather();
+});
+
+/* ──────────────────────────────────────────
+   RENDER CARD
+────────────────────────────────────────── */
+function renderCard(data) {
+  const weatherMain = data.weather.main;
+  const desc        = data.weather.description;
+  const temp        = data.temperature.current ?? 0;
+  const city        = data.city || '';
+  const country     = data.country || '';
+
+  document.getElementById('cityTitle').textContent = country ? `${city}, ${country}` : city;
+  document.getElementById('sHum').textContent   = `${data.humidity ?? '—'}%`;
+  document.getElementById('sWind').textContent  = `${data.wind?.speed ?? '—'} m/s`;
+  document.getElementById('sPress').textContent = `${data.pressure ?? '—'} hPa`;
+
+  const tMin = data.temperature.min;
+  const tMax = data.temperature.max;
+  document.getElementById('minmax').textContent =
+    (tMin != null && tMax != null)
+      ? `Mín: ${tMin.toFixed(1)}°C  ·  Máx: ${tMax.toFixed(1)}°C`
+      : '';
+
+  document.getElementById('card').classList.add('visible');
+
+  startScene(weatherMain, desc, temp);
+}
+
+/* ──────────────────────────────────────────
+   CANVAS SCENE
+────────────────────────────────────────── */
+function startScene(weatherMain, desc, temp) {
+  if (animFrame) cancelAnimationFrame(animFrame);
+  particles = [];
+  tick = 0;
+
+  const canvas = document.getElementById('scene');
+  const W = canvas.offsetWidth;
+  const H = 260;
+  canvas.width  = W;
+  canvas.height = H;
+
+  const ctx    = canvas.getContext('2d');
+  const theme  = THEMES[weatherMain] || THEMES.default;
+  const wl     = weatherMain.toLowerCase();
+
+  // Pre-build particles
+  if (wl.includes('rain') || wl.includes('drizzle') || wl.includes('thunder')) {
+    for (let i = 0; i < 35; i++) particles.push({
+      x: Math.random() * W, y: Math.random() * H * .85,
+      speed: 4 + Math.random() * 5, len: 12 + Math.random() * 8,
+      type: 'rain'
+    });
+  }
+  if (wl.includes('snow')) {
+    for (let i = 0; i < 30; i++) particles.push({
+      x: Math.random() * W, y: Math.random() * H * .85,
+      speed: 1 + Math.random() * 1.5, r: 2 + Math.random() * 4,
+      drift: (Math.random() - .5) * .8, type: 'snow'
+    });
+  }
+
+  function frame() {
+    tick++;
+    ctx.clearRect(0, 0, W, H);
+
+    /* sky gradient */
+    const grd = ctx.createLinearGradient(0, 0, 0, H);
+    grd.addColorStop(0, theme.sky1);
+    grd.addColorStop(1, theme.sky2);
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, W, H);
+
+    const groundY = Math.floor(H * 0.74);
+
+    /* scene elements */
+    if (wl.includes('clear')) drawSun(ctx, W / 2, H * .28, 44, theme.accent, tick);
+    if (wl.includes('haze'))  drawSun(ctx, W * .7, H * .25, 34, '#FFB300', tick);
+
+    if (wl.includes('cloud') || wl.includes('mist') || wl.includes('fog') || wl.includes('haze')) {
+      if (!wl.includes('thunder')) drawSun(ctx, W * .75, H * .2, 28, '#FFE082', tick);
+      drawCloud(ctx, W * .35, H * .18, 130, 50, 'rgba(255,255,255,0.9)');
+      drawCloud(ctx, W * .65, H * .3,  90, 36, 'rgba(220,230,235,0.82)');
+    }
+
+    if (wl.includes('rain') || wl.includes('drizzle')) {
+      drawCloud(ctx, W * .4, H * .12, 150, 58, '#78909C');
+      drawCloud(ctx, W * .72, H * .08, 100, 42, '#607D8B');
+    }
+
+    if (wl.includes('thunder') || wl.includes('storm')) {
+      drawCloud(ctx, W * .4, H * .1, 170, 68, '#455A64');
+      drawCloud(ctx, W * .72, H * .06, 110, 46, '#37474F');
+      if (Math.floor(tick / 40) % 5 === 0) drawLightning(ctx, W * .45, H * .22, theme.accent);
+    }
+
+    if (wl.includes('snow')) {
+      drawCloud(ctx, W * .4, H * .12, 140, 54, '#B0BEC5');
+    }
+
+    /* particles */
+    particles.forEach(p => {
+      if (p.type === 'rain') {
+        ctx.strokeStyle = theme.accent + 'CC';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - 3, p.y + p.len);
+        ctx.stroke();
+        p.y += p.speed;
+        if (p.y > groundY) { p.y = -p.len; p.x = Math.random() * W; }
+      }
+      if (p.type === 'snow') {
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+        p.y += p.speed;
+        p.x += p.drift;
+        if (p.y > groundY) { p.y = -p.r; p.x = Math.random() * W; }
+      }
+    });
+
+    /* ground */
+    ctx.fillStyle = theme.ground;
+    ctx.fillRect(0, groundY, W, H - groundY);
+
+    /* grass blades (subtle) */
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+    ctx.lineWidth = 1;
+    for (let x = 10; x < W; x += 14) {
+      const sway = Math.sin(tick * .03 + x * .1) * 3;
+      ctx.beginPath();
+      ctx.moveTo(x, groundY);
+      ctx.quadraticCurveTo(x + sway, groundY - 8, x + sway * 1.5, groundY - 14);
+      ctx.stroke();
+    }
+
+    /* temperature */
+    ctx.save();
+    ctx.font = 'bold 56px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.fillText(`${Math.round(temp)}°C`, W / 2, groundY - 18);
+    ctx.restore();
+
+    /* description */
+    ctx.save();
+    ctx.font = '500 14px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.72)';
+    ctx.fillText(desc.charAt(0).toUpperCase() + desc.slice(1), W / 2, groundY + 18);
+    ctx.restore();
+
+    animFrame = requestAnimationFrame(frame);
+  }
+
+  frame();
+}
+
+/* ──────────────────────────────────────────
+   DRAWING HELPERS
+────────────────────────────────────────── */
+function drawSun(ctx, cx, cy, r, color, tick) {
+  const rays = 12;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(tick * .008);
+
+  // glow
+  const glow = ctx.createRadialGradient(0, 0, r * .3, 0, 0, r * 2.5);
+  glow.addColorStop(0, color + '55');
+  glow.addColorStop(1, 'transparent');
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(0, 0, r * 2.5, 0, Math.PI * 2); ctx.fill();
+
+  // rays
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  for (let i = 0; i < rays; i++) {
+    const a = (i / rays) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * (r + 4), Math.sin(a) * (r + 4));
+    ctx.lineTo(Math.cos(a) * (r + 16), Math.sin(a) * (r + 16));
+    ctx.stroke();
+  }
+
+  // disc
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawCloud(ctx, cx, cy, w, h, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+
+  const draw = (ox, oy) => {
+    ctx.beginPath();
+    ctx.ellipse(ox, oy + h * .35, w * .5, h * .45, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(ox - w * .22, oy + h * .1, w * .26, h * .35, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(ox + w * .18, oy + h * .15, w * .22, h * .28, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(ox - w * .5, oy + h * .35, w, h * .16);
+  };
+
+  // soft shadow
+  ctx.globalAlpha = .18;
+  ctx.fillStyle = '#000';
+  draw(cx + 4, cy + 6);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = color;
+  draw(cx, cy);
+  ctx.restore();
+}
+
+function drawLightning(ctx, x, y, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 14;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x - 14, y + 36);
+  ctx.lineTo(x + 8, y + 36);
+  ctx.lineTo(x - 10, y + 80);
+  ctx.lineTo(x + 26, y + 30);
+  ctx.lineTo(x + 6, y + 30);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+/* ──────────────────────────────────────────
+   UI HELPERS
+────────────────────────────────────────── */
+function setLoading(on) {
+  document.getElementById('spinner').classList.toggle('visible', on);
+  document.getElementById('btnSearch').disabled = on;
+  document.getElementById('btnSearch').textContent = on ? 'Buscando…' : 'Escanear Clima';
+}
+
+function showError(msg) {
+  const el = document.getElementById('status');
+  el.textContent = '⚠  ' + msg;
+  el.classList.add('visible');
+  document.getElementById('card').classList.remove('visible');
+}
+
+function hideError() {
+  document.getElementById('status').classList.remove('visible');
+}
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@ from datetime import datetime
 from flask import Flask, jsonify, request
 from dotenv import load_dotenv
 from requests.exceptions import Timeout, ConnectionError, RequestException
+from flask_cors import CORS
 
 # Cargar variables de entorno
 load_dotenv()
@@ -15,6 +16,14 @@ OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY')
 OPENWEATHER_BASE_URL = 'https://api.openweathermap.org/data/2.5/weather'
 FORECAST_BASE_URL = 'https://api.openweathermap.org/data/2.5/forecast'
 REQUEST_TIMEOUT = 5
+
+
+CORS(app, resources={
+    r"/*": {
+        "origins": "*"
+    }
+})
+
 
 
 # ==================== Validaciones ====================
